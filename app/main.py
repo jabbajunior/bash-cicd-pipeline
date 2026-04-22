@@ -55,7 +55,7 @@ def read_item(item_id: int, response: Response):
 @app.get(
     "/items",
     status_code=200,
-    summary="Get all items"
+    summary="Get all items",
     description="Fetch all items from the in-memory store.")
 def read_items():
     """Return all items from the in-memory store."""
