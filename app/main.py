@@ -50,3 +50,13 @@ def read_item(item_id: int, response: Response):
         response.status_code = 404
         return {"status": "not found"}
     return items[item_id]
+
+
+@app.get(
+    "/items",
+    status_code=200,
+    summary="Get all items"
+    description="Fetch all items from the in-memory store.")
+def read_items():
+    """Return all items from the in-memory store."""
+    return {"items": items}
