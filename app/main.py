@@ -59,4 +59,4 @@ def read_item(item_id: int, response: Response):
     description="Fetch all items from the in-memory store.")
 def read_items():
     """Return all items from the in-memory store."""
-    return {"items": items}
+    return list(items.values())
