@@ -12,6 +12,8 @@ SCRIPT_PATH="${BASH_SOURCE[0]}" # Grabs the current relative path of this script
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)" # Gets the absolute path of the scripts folder
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")" # Gets the absolute path of the root project folder
 
+cd $PROJECT_ROOT
+
 # Linting
 if ! uv run ruff check "$PROJECT_ROOT/app"; then
     echo "$(date): linting failed" >> "$PROJECT_ROOT/logs/pipeline.log" # TODO: Replace this later with a centralized logger
