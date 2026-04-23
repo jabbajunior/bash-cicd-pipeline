@@ -33,7 +33,7 @@ def create_item(item: Item):
 
     item_id = index
     items[item_id] = {"id": item_id, "name": item.name}
-    index += 1;
+    index += 1
     
     return items[item_id]
 
