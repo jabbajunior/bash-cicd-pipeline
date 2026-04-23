@@ -1,31 +1,22 @@
 #!/usr/bin/bash
 
-# Resolves this script's location and derives the project root from it
-get_absolute_path () {
-    # Path of current script
-    SCRIPT_PATH="${BASH_SOURCE[0]}"
+# Preserve the original working directory so it can be restored before exit.
+PREVIOUS_PATH="$(pwd)"
 
-    # Directory containing this script 
-    SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+# Resolve paths relative to this script.
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-    # Project Root Directory
-    PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-
-    # Change into the script directory, so later path operations are relative
-    if ! cd "$SCRIPT_DIR"; then
-        log "FATAL" "Could not cd into script directory!"
-        exit 1
-    fi
-
-    return 0
-}
-
-# Save the caller's working directory so it can be restored later
-PREVIOUS_PATH="$(pwd)" # Restore to this later
-
-
-get_absolute_path
+# Load shared logging helpers.
 source "$SCRIPT_DIR/logging.sh"
+
+# Switch to the script directory so relative paths behave consistently.
+if ! cd "$SCRIPT_DIR"; then
+    log "FATAL" "Could not cd into script directory!"
+    exit 1
+fi
+
 
 log "INFO" "this is a test"
 echo 
@@ -34,11 +25,6 @@ echo "script path: $SCRIPT_PATH"
 echo "script dir: $SCRIPT_DIR"
 echo "project_root: $PROJECT_ROOT"
 
-
-
-#find $(pwd) -name "bash-cicd-pipeline"
-
-#realpath /pipeline.sh
 
 # Execute ci.sh
 
