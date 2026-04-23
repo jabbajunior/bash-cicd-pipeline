@@ -13,7 +13,7 @@ get_absolute_path () {
 
     # Change into the script directory, so later path operations are relative
     if ! cd "$SCRIPT_DIR"; then
-        #log error via error redirection
+        log "FATAL" "Could not cd into script directory!"
         exit 1
     fi
 
@@ -23,9 +23,11 @@ get_absolute_path () {
 # Save the caller's working directory so it can be restored later
 PREVIOUS_PATH="$(pwd)" # Restore to this later
 
+
 get_absolute_path
+source "$SCRIPT_DIR/logging.sh"
 
-
+log "INFO" "this is a test"
 echo 
 echo
 echo "script path: $SCRIPT_PATH"
