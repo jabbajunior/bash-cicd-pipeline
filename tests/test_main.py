@@ -80,3 +80,44 @@ def test_read_item_not_found():
 
     # Confirm the response body matches the expected error payload.
     assert response.json() == {"status": "not found"}
+
+def test_read_items():
+    """Verify that the get all items endpoint returns all stored items."""
+
+    # Reset in-memory app state before the test.
+    main.items.clear()
+    main.index = 1
+
+    # Create a couple of test items.
+    client.post("/items/", json={"name": "test_item_1"})
+    client.post("/items/", json={"name": "test_item_2"})
+
+    # Request all stored items.
+    response = client.get("/items")
+
+    # Confirm the endpoint returns HTTP 200 OK.
+    assert response.status_code == 200
+
+    # Confirm the response body contains all stored items.
+    assert response.json() == {
+        "items": {
+            "1": {"id": 1, "name": "test_item_1"},
+            "2": {"id": 2, "name": "test_item_2"},
+        }
+    }
+
+def test_read_items_empty():
+    """Verify that the get all items endpoint returns an empty collection when no items exist."""
+
+    # Reset in-memory app state before the test.
+    main.items.clear()
+    main.index = 1
+
+    # Request all stored items when none have been created.
+    response = client.get("/items")
+
+    # Confirm the endpoint returns HTTP 200 OK.
+    assert response.status_code == 200
+
+    # Confirm the response body contains no items.
+    assert response.json() == {"items": {}}
