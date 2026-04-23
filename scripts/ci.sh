@@ -14,6 +14,10 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")" # Gets the absolute path of the root pro
 
 cd $PROJECT_ROOT
 
+# This can probably be better done with a positional parameter
+
+
+
 # Linting
 if ! uv run ruff check "$PROJECT_ROOT/app"; then
     echo "$(date): linting failed" >> "$PROJECT_ROOT/logs/pipeline.log" # TODO: Replace this later with a centralized logger
