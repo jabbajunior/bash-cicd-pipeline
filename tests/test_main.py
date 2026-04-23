@@ -43,3 +43,40 @@ def test_create_item_invalid_body():
 
     # Confirm FastAPI returns a validation error.
     assert response.status_code == 422
+
+
+def test_read_item():
+    """Verify that the get item endpoint returns a stored item by ID."""
+
+    # Reset in-memory app state before the test.
+    main.items.clear()
+    main.index = 1
+
+    # Create a test item first so there is something to retrieve.
+    client.post("/items/", json={"name": "test_item"})
+
+    # Request the item by its ID.
+    response = client.get("/items/1")
+
+    # Confirm the endpoint returns HTTP 200 OK.
+    assert response.status_code == 200
+
+    # Confirm the response body matches the stored item.
+    assert response.json() == {"id": 1, "name": "test_item"}
+
+
+def test_read_item_not_found():
+    """Verify that the get item endpoint returns 404 for a missing item."""
+
+    # Reset in-memory app state before the test.
+    main.items.clear()
+    main.index = 1
+
+    # Request an item ID that does not exist.
+    response = client.get("/items/999")
+
+    # Confirm the endpoint returns HTTP 404 Not Found.
+    assert response.status_code == 404
+
+    # Confirm the response body matches the expected error payload.
+    assert response.json() == {"status": "not found"}
