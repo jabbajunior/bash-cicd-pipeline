@@ -12,7 +12,6 @@ class Item(BaseModel):
     name: str
 
 
-# Returns an http 200 and a short message indicating the program is healthy
 @app.get(
     "/health",
     status_code=200,
