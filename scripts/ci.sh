@@ -32,3 +32,8 @@ if ! uv run pytest; then
 fi
 
 log "INFO" "Tests passed"
+
+# TODO
+# Run CI on git pull
+# Potentially run tests in parallel via background job or something else NEED TO ENSURE FAILURE STOPS
+#   m m

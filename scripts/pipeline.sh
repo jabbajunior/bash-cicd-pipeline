@@ -34,6 +34,5 @@ log "INFO" "switched to project root directory"
 
 # Execute ci.sh
 ./scripts/ci.sh $LOG_FILE
-# Execute cd.sh
 
-# 
+# Execute cd.sh
