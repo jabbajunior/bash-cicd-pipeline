@@ -59,3 +59,17 @@ def read_item(item_id: int, response: Response):
 def read_items():
     """Return all items from the in-memory store."""
     return {"items": items}
+
+@app.post(
+    "/reset",
+    status_code=200,
+    summary="Reset in-memory store",
+    description="Testing method to reset in-memory store.")
+def reset_items():
+    """Reset in-memory store and indexing."""
+    global index
+
+    items.clear()
+    index = 1
+
+    return {"status": "reset"}
