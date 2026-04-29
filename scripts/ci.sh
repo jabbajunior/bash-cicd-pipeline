@@ -1,21 +1,39 @@
 #!/usr/bin/bash
 
-# TODO
-# If fail at any point, stop execution of script and log an error somewhere
-# Linting
-# Testing 
-# Merge PR
+# This script executes a ci pipeline and is executed via ci.yml on a pull request being made or edited
 
-# Import in logging script
-source "scripts/logging.sh" || {
+# Bootstrap fatal logger used before logging.sh is available.
+fatal() {
     printf 'FATAL: %s\n' "$*" >&2
     exit 1
 }
 
-LOG_FILE=$1
-SCRIPT_PATH=$0
+# Resolve paths relative to this script.
+SCRIPT_PATH="${BASH_SOURCE[0]}"
 
-log "INFO" "has started execution"
+if [[ "$SCRIPT_PATH" != */* ]]; then
+    SCRIPT_PATH="$(command -v "$SCRIPT_PATH")" || fatal "could not resolve script path"
+fi
+
+
+# Resolve absolute script and project directories
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)" || fatal "could not resolve script directory"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)" || fatal "could not resolve project root"
+
+# Load shared logging helpers as soon as SCRIPT_DIR is known.
+source "$SCRIPT_DIR/logging.sh" || fatal "could not load logging.sh"
+
+log "INFO" "Started Execution"
+log "INFO" "Loaded logging library"
+log "DEBUG" "PROJECT_ROOT: $PROJECT_ROOT"
+
+# Switch to the project root so relative paths behave consistently.
+if ! cd "$PROJECT_ROOT"; then
+    log "FATAL" "could not cd into script directory: $PROJECT_ROOT"
+    exit 1
+fi
+
+log "INFO" "Changed path to project root directory"
 
 # Linting
 if ! uv run ruff check "app/"; then
@@ -26,14 +44,13 @@ fi
 log "INFO" "Linting passed"
 
 # Testing
+
+# Make these more specific so does not run entire test suite
+# uv run pytest tests/test_X -v
+
 if ! uv run pytest; then
     log "FATAL" "Tests Failed!"
-    exit 2 # 2 = Testing
+    exit 3 # 3 = Testing
 fi
 
 log "INFO" "Tests passed"
-
-# TODO
-# Run CI on git pull
-# Potentially run tests in parallel via background job or something else NEED TO ENSURE FAILURE STOPS
-#   m m
