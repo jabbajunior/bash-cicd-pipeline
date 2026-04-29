@@ -1,6 +1,19 @@
 #!/usr/bin/bash
 
-LOG_FILE="$PROJECT_ROOT/logs/pipeline.log"
+# Ensure PROJECT_ROOT was set by the calling script before sourcing this file.
+if [[ -z "${PROJECT_ROOT:-}" ]]; then
+    echo "ERROR: PROJECT_ROOT is not set before sourcing logging.sh" >&2
+    exit 1
+fi
+
+
+LOG_DIR="$PROJECT_ROOT/logs"
+LOG_FILE="$LOG_DIR/pipeline.log"
+
+mkdir -p "$LOG_DIR" || {
+    echo "ERROR: could not create log directory: $LOG_DIR" >&2
+    exit 1
+}
 
 #Use DEBUG liberally during development but sparingly in production. It’s perfect for tracing execution flow and variable values.
 #Use INFO to track normal operation milestones - script start/end, major function completions, or configuration loading.
