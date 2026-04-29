@@ -1,0 +1,40 @@
+# CI workflow
+#
+# This workflow runs the project's CI pipeline whenever a pull request is
+# opened, updated with new commits, reopened, or marked as ready for review.
+
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Use Bash as the default shell for all run commands in this workflow.
+defaults:
+  run:
+    shell: bash
+
+# Give the workflow read-only access to the repository contents.
+# This is enough for checking out the code and running tests.
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    # Human-readable name shown in the GitHub Actions UI.
+    name: Lint and test codebase
+
+    # Run this job on the self-hosted GitHub Actions runner.
+    runs-on: self-hosted
+
+    steps:
+      # Check out the repository code onto the runner.
+      - name: Checkout GitHub repo
+        uses: actions/checkout@v4
+
+      # Make the CI script executable, then run it.
+      # The script handles linting, testing, and logging.
+      - name: Run CI pipeline
+        run: |
+          chmod +x ./scripts/ci.sh
+          ./scripts/ci.sh
