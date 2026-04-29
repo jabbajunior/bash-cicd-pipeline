@@ -28,6 +28,6 @@ log() {
     local message=$2  # A string representing the message provided by the user when calling the function
     
     local script_name=$(basename $SCRIPT_PATH)  # The name of the script that is running
-    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")  # The current date and time at the time the function is called
+    local timestamp=$(date +"%Y-%m-%d %I:%M:%S %p")  # The current date and time at the time the function is called
     echo "$timestamp [$log_level] [$script_name] $message" | tee -a $LOG_FILE
 }
