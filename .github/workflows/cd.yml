@@ -1,13 +1,13 @@
-# CI workflow
+# CD workflow
 #
-# This workflow runs the project's CI pipeline whenever a pull request is
-# opened, updated with new commits, reopened, or marked as ready for review.
+# This workflow runs the project's CD pipeline whenever a pull request is merged
 
-name: CI
+name: CD
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: 
+    - closed
 
 # Use Bash as the default shell for all run commands in this workflow.
 defaults:
@@ -22,7 +22,7 @@ permissions:
 jobs:
   ci-pipeline:
     # Human-readable name shown in the GitHub Actions UI.
-    name: Run CI pipeline
+    name: Run CD pipeline
 
     # Run this job on the self-hosted GitHub Actions runner.
     runs-on: self-hosted
@@ -32,9 +32,9 @@ jobs:
       - name: Checkout GitHub repo
         uses: actions/checkout@v4
 
-      # Make the CI script executable, then run it.
-      # The script handles linting, testing, and logging.
-      - name: Execute ci.sh
+      # Make the CD script executable, then run it.
+      # The script handles deploying new images to docker.
+      - name: Execute cd.sh
         run: |
-          chmod +x ./scripts/ci.sh
-          ./scripts/ci.sh
+          chmod +x ./scripts/cd.sh
+          ./scripts/cd.sh
