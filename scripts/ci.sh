@@ -1,56 +1,58 @@
 #!/usr/bin/bash
 
-# This script executes a ci pipeline and is executed via ci.yml on a pull request being made or edited
+# Simulates the CI stage by loading shared logging, linting the app, and running the test suite.
+# It then builds a candidate Docker image for later deployment.
 
-# Bootstrap fatal logger used before logging.sh is available.
-fatal() {
-    printf 'FATAL: %s\n' "$*" >&2
-    exit 1
+# ----------------------------
+# Functions
+# ----------------------------
+
+initialize_ci_pipeline() {
+    # Make the script path available to the shared logger.
+    export SCRIPT_PATH="${BASH_SOURCE[0]}"
+
+    # Load the shared logging helpers after SCRIPT_PATH is set.
+    if ! source "./scripts/logging.sh"; then
+        echo "[FATAL] Could not load logging.sh"
+        exit 1
+    fi
+
+    log "INFO" "Started Execution"
+    log "INFO" "Loaded logging library"
+
+    LABEL="test-pipeline"
+
+    # Build the candidate Docker image after linting and tests pass.
+    STATE_PATH="./state"
+    CANDIDATE_IMAGE_ID_FILE="$STATE_PATH/candidate_image.id"
+    CANDIDATE_IMAGE_TAG_FILE="$STATE_PATH/candidate_image.tag"
+    LABEL_FILE="$STATE_PATH/label.txt"
 }
 
-# Resolve paths relative to this script.
-SCRIPT_PATH="${BASH_SOURCE[0]}"
+run_lint() {
+    # Run the linter on the application code.
+    if ! uv run ruff check "app/"; then
+        log "FATAL" "Linting Failed!"
+        exit 1
+    fi
 
-if [[ "$SCRIPT_PATH" != */* ]]; then
-    SCRIPT_PATH="$(command -v "$SCRIPT_PATH")" || fatal "could not resolve script path"
-fi
+    log "INFO" "Linting passed"
+}
 
+run_tests() {
+    # Run the test suite against the application.
+    if ! uv run pytest tests/test_combined.py --api-target=inprocess --verbose; then
+        log "FATAL" "Unit tests failed"
+        exit 1
+    fi
 
-# Resolve absolute script and project directories
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)" || fatal "could not resolve script directory"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)" || fatal "could not resolve project root"
+    log "INFO" "Tests passed"
+}
 
-# Load shared logging helpers as soon as SCRIPT_DIR is known.
-source "$SCRIPT_DIR/logging.sh" || fatal "could not load logging.sh"
+# ----------------------------
+# Main script
+# ----------------------------
 
-log "INFO" "Started Execution"
-log "INFO" "Loaded logging library"
-log "DEBUG" "PROJECT_ROOT: $PROJECT_ROOT"
-
-# Switch to the project root so relative paths behave consistently.
-if ! cd "$PROJECT_ROOT"; then
-    log "FATAL" "could not cd into script directory: $PROJECT_ROOT"
-    exit 1
-fi
-
-log "INFO" "Changed path to project root directory"
-
-# Linting
-if ! uv run ruff check "app/"; then
-    log "FATAL" "Linting Failed!"
-    exit 2 # 2 = Linting
-fi
-
-log "INFO" "Linting passed"
-
-# Testing
-
-# Make these more specific so does not run entire test suite
-# uv run pytest tests/test_X -v
-
-if ! uv run pytest; then
-    log "FATAL" "Tests Failed!"
-    exit 3 # 3 = Testing
-fi
-
-log "INFO" "Tests passed"
+initialize_ci_pipeline
+run_lint
+run_tests
