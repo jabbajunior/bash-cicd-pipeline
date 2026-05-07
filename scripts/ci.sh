@@ -49,6 +49,37 @@ run_tests() {
     log "INFO" "Tests passed"
 }
 
+run_build() {
+    # Use UTC so build tags are consistent across local runs and CI runners.
+    local image_version
+    image_version="$(date -u +"%Y-%m-%dT%H-%M-%SZ")"
+
+    # Tag each build with a unique timestamp.
+    local image_name="my-image"
+    local tag_name="$image_name:$image_version"
+
+    # Build the image and write the image ID to the state file.
+    if ! docker image build \
+        --tag "$tag_name" \
+        --iidfile "$CANDIDATE_IMAGE_ID_FILE" \
+        --progress=plain \
+        --label="$LABEL" \
+        .; then
+        
+        # Removes any dangling images left behind
+        docker image prune -f
+
+        # Log failures and exit
+        log "FATAL" "Candidate image could not be built!"
+        exit 1
+    fi
+
+    printf '%s\n' "$tag_name" > "$CANDIDATE_IMAGE_TAG_FILE"
+    printf '%s\n' "$LABEL" > "$LABEL_FILE"
+    log "INFO" "Built image $tag_name with image ID $(cat "$CANDIDATE_IMAGE_ID_FILE")"
+}
+
+
 # ----------------------------
 # Main script
 # ----------------------------
@@ -56,3 +87,4 @@ run_tests() {
 initialize_ci_pipeline
 run_lint
 run_tests
+run_build
