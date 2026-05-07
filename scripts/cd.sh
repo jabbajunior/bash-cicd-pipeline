@@ -1,84 +1,106 @@
 #!/usr/bin/bash
 
-# This script executes a cd pipeline via cd.yml after a pull request has been merged
+# Simulates the CD stage by loading shared logging, preparing state paths, and setting deployment variables.
 
-# Bootstrap fatal logger used before logging.sh is available.
-fatal() {
-    printf 'FATAL: %s\n' "$*" >&2
-    exit 1
+# ----------------------------
+# Functions
+# ----------------------------
+
+## Helper Functions
+
+initialize_cd_pipeline() {
+    # Make the script path available to the shared logger.
+    export SCRIPT_PATH="${BASH_SOURCE[0]}"
+
+    # Load the shared logging helpers after SCRIPT_PATH is set.
+    if ! source "./scripts/logging.sh"; then
+        echo "[FATAL] Could not load logging.sh"
+        exit 1
+    fi
+
+    log "INFO" "Started Execution"
+    log "INFO" "Loaded logging library"
 }
 
-# Resolve paths relative to this script.
-SCRIPT_PATH="${BASH_SOURCE[0]}"
+initialize_cd_config() {
+    # Deployment state files track image IDs for rollback decisions.
+    STATE_PATH="./state"
 
-if [[ "$SCRIPT_PATH" != */* ]]; then
-    SCRIPT_PATH="$(command -v "$SCRIPT_PATH")" || fatal "could not resolve script path"
-fi
+    CANDIDATE_IMAGE_ID_FILE="$STATE_PATH/candidate_image.id"
+    CANDIDATE_IMAGE_TAG_FILE="$STATE_PATH/candidate_image.tag"
+    STABLE_IMAGE_ID_FILE="$STATE_PATH/stable_image.id"
+    STABLE_IMAGE_TAG_FILE="$STATE_PATH/stable_image.tag"
+    PREVIOUS_IMAGE_ID_FILE="$STATE_PATH/previous_image.id"
+    PREVIOUS_IMAGE_TAG_FILE="$STATE_PATH/previous_image.tag"
 
+    LAST_DEPLOY_STATUS_FILE="$STATE_PATH/last_deploy_status.txt"
 
-# Resolve absolute script and project directories
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)" || fatal "could not resolve script directory"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)" || fatal "could not resolve project root"
+    STABLE_CONTAINER_NAME="my-app"
+    CANDIDATE_CONTAINER_NAME="my-app-dev"
+    HOST_PORT="8000"
 
-# Load shared logging helpers as soon as SCRIPT_DIR is known.
-source "$SCRIPT_DIR/logging.sh" || fatal "could not load logging.sh"
+    CANDIDATE_IMAGE_TAG="$(< "$CANDIDATE_IMAGE_TAG_FILE")"
+    CANDIDATE_IMAGE_ID="$(< "$CANDIDATE_IMAGE_ID_FILE")"
 
-log "INFO" "Started Execution"
-log "INFO" "Loaded logging library"
-log "DEBUG" "PROJECT_ROOT: $PROJECT_ROOT"
+    log "INFO" "Finished initializing the script"
+}
 
-# Switch to the project root so relative paths behave consistently.
-if ! cd "$PROJECT_ROOT"; then
-    log "FATAL" "could not cd into script directory: $PROJECT_ROOT"
-    exit 1
-fi
-
-log "INFO" "Changed path to project root directory"
+## Workflow Functions
 
 
-VERSION=$(date +%Y%m%d-%H%M%S)
-CONTAINER_NAME="my-app"
-IMAGE_NAME="my-image"
-HOST_PORT="8000"
-CONTAINER_PORT="8000"
+# Start the candidate container from the image ID produced by CI so it can be validated before promotion.
+run_candidate_container() {
+    if ! docker run \
+        --detach \
+        --name "$CANDIDATE_CONTAINER_NAME" \
+        "$CANDIDATE_IMAGE_ID"; then
 
-# TODO Add explicit logging and rollback support on docker failures
+        # Log failures and exit.
+        log "FATAL" "Candidate container $CANDIDATE_CONTAINER_NAME could not be started from image $CANDIDATE_IMAGE_ID!"
+        cleanup_failed_deploy
+    fi
 
-# 1. Build the new Docker image.
-docker build \
-    --tag "$IMAGE_NAME:$VERSION" \
-    . \
-    --progress=plain \
-    --debug
+    log "INFO" "Candidate container $CANDIDATE_CONTAINER_NAME started from image $CANDIDATE_IMAGE_ID"
+}
 
-# 2. Run in-process API tests in a temporary container from the new image.
-docker run \
-    --rm \
-    "$IMAGE_NAME:$VERSION" \
-    uv run pytest \
-    tests/test_inprocess_api.py \
-    --verbose
+# Run deployment tests against the candidate container after it becomes healthy.
+run_deployment_tests() {
+    if ! wait_for_healthy_candidate; then
+        log "FATAL" "Candidate Server is not healthy!"
+        cleanup_failed_deploy
+    fi
 
-# 3. Stop and remove the currently running app container.
-docker rm \
-    --force \
-    "$CONTAINER_NAME"
-    # COnsider redirecting errors?
+    # Run the deployment API tests against the running container.
+    if ! docker exec \
+        "$CANDIDATE_CONTAINER_NAME" \
+        uv run pytest \
+        tests/test_combined.py \
+        --api-target=live \
+        --base-url="http://localhost:${HOST_PORT}" \
+        --verbose; then
 
-# TODO will have an error first time run, since no old container to remove
+        # Log failures and cleanup
+        log "FATAL" "Candidate container $CANDIDATE_CONTAINER_NAME did not pass the testing suite!"
+        log "DEBUG" "Rollback initiated!"
 
-# 4. Start a new container from the new image.
-docker run \
-    --detach \
-    --name "$CONTAINER_NAME" \
-    --publish "$HOST_PORT:$CONTAINER_PORT" \
-    "$IMAGE_NAME:$VERSION"
+        cleanup_failed_deploy
+    fi
+
+    
+    log "INFO" "Candidate container $CANDIDATE_CONTAINER_NAME passed the automated testing"
+    cleanup_successful_deploy
+}
 
 
-# 5. Run deployment API tests against the running container.
-docker exec \
-    --env BASE_URL=http://localhost:8000 \
-    "$CONTAINER_NAME" \
-    uv run pytest \
-    tests/test_deployment_api.py \
-    --verbose
+# ----------------------------
+# Main script
+# ----------------------------
+
+initialize_cd_pipeline
+initialize_cd_config
+
+# TODO testing purposes only
+#docker container prune -f
+
+run_candidate_container
+run_deployment_tests
