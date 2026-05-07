@@ -45,6 +45,78 @@ initialize_cd_config() {
     log "INFO" "Finished initializing the script"
 }
 
+# Roll back a failed deployment by removing the candidate container and image,
+# then record the failure and clear stable state metadata.
+cleanup_failed_deploy() {
+    # Remove the candidate container first so the failed deployment is no longer running.
+     if ! docker container \
+        remove "$CANDIDATE_CONTAINER_NAME" \
+        --force \
+        ; then
+
+        # Continue cleanup even if the container is already gone.
+        log "FATAL" "Could not remove Candidate Container $CANDIDATE_CONTAINER_NAME"
+    fi
+
+    # Remove the candidate image so the failed build is not reused accidentally.
+    if ! docker image \
+        rm \
+        --force \
+        "$CANDIDATE_IMAGE_ID"; then
+
+        log "FATAL" "Could not remove Candidate Image $CANDIDATE_IMAGE_TAG"
+    fi
+
+    # Record the failed deployment for later inspection.
+    echo "$(date +"%Y-%m-%d %I:%M:%S %p") [FAILURE] $CANDIDATE_IMAGE_TAG deployment failed!" >> "$LAST_DEPLOY_STATUS_FILE"
+
+    # Emit a final failure log for the pipeline output.
+    log "FATAL" "$CANDIDATE_IMAGE_TAG deployment failed!"
+
+    # Remove the stable image metadata so the next run does not treat it as current.
+    rm "$STABLE_IMAGE_ID_FILE" "$STABLE_IMAGE_TAG_FILE"
+
+    exit 1
+}
+
+
+cleanup_old_images() {
+    # Cleans up older images generated from this file (via label) except for all files in the state directory
+
+
+    # Cleans up all older images, except for the current stable image and a previous stable image
+
+    # Scan the state directory for files and delete all 
+    # Label all of our images
+
+    
+}
+
+# Promote a validated candidate to stable and preserve the prior stable version when one exists.
+cleanup_successful_deploy() {
+    # If stable metadata already exists, this is an update rather than the first deploy.
+    if [[ -f "$STABLE_IMAGE_ID_FILE" && -f "$STABLE_IMAGE_TAG_FILE" ]]; then
+        if ! docker container remove "$STABLE_CONTAINER_NAME" --force; then
+            log "FATAL" "Could not stop and remove current container!"
+            cleanup_failed_deploy
+        fi
+
+        # Keep a record of the previous stable image before overwriting it.
+        cp "$STABLE_IMAGE_ID_FILE" "$PREVIOUS_IMAGE_ID_FILE"
+        cp "$STABLE_IMAGE_TAG_FILE" "$PREVIOUS_IMAGE_TAG_FILE"
+    fi
+
+    # Promote the candidate image metadata to stable on every successful deploy.
+    cp "$CANDIDATE_IMAGE_ID_FILE" "$STABLE_IMAGE_ID_FILE"
+    cp "$CANDIDATE_IMAGE_TAG_FILE" "$STABLE_IMAGE_TAG_FILE"
+
+    # Promote the running candidate container by renaming it to the stable name.
+    docker container rename "$CANDIDATE_CONTAINER_NAME" "$STABLE_CONTAINER_NAME"
+
+    echo "$(date +"%Y-%m-%d %I:%M:%S %p") [SUCCESS] $CANDIDATE_IMAGE_TAG deployment succeeded!" >> "$LAST_DEPLOY_STATUS_FILE"
+    cleanup_old_images
+}
+
 # Wait for the candidate server to fbecome healthy before running tests.
 wait_for_healthy_candidate() {
     local max_attempts=15
@@ -72,6 +144,7 @@ wait_for_healthy_candidate() {
     docker logs "$CANDIDATE_CONTAINER_NAME" --tail 100
     return 1
 }
+
 
 ## Workflow Functions
 
