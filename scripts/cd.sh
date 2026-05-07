@@ -45,6 +45,34 @@ initialize_cd_config() {
     log "INFO" "Finished initializing the script"
 }
 
+# Wait for the candidate server to fbecome healthy before running tests.
+wait_for_healthy_candidate() {
+    local max_attempts=15
+    local cur_attempt=1
+
+    log "INFO" "Waiting for candidate server to become ready"
+
+    # Loop until max_attempts to determine if the candidate server is online.
+    while [[ "$cur_attempt" -le "$max_attempts" ]]; do
+
+        if docker exec \
+            "$CANDIDATE_CONTAINER_NAME" \
+            curl --fail --silent "http://localhost:8000/health" >/dev/null; then
+
+            log "INFO" "Candidate server is ready"
+            return 0
+        fi
+
+        log "INFO" "Candidate server not ready yet. Attempt $((cur_attempt++))/$max_attempts"
+        sleep 2
+    done
+
+    log "FATAL" "Candidate server did not become ready in time"
+    docker ps --filter "name=$CANDIDATE_CONTAINER_NAME"
+    docker logs "$CANDIDATE_CONTAINER_NAME" --tail 100
+    return 1
+}
+
 ## Workflow Functions
 
 
