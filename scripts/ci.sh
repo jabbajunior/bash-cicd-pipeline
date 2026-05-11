@@ -18,15 +18,17 @@ initialize_ci_pipeline() {
     fi
 
     log "INFO" "Started Execution"
+    log "DEBUG" "Function is initialize_ci_pipeline"
     log "INFO" "Loaded logging library"
 
-    LABEL="test-pipeline"
+    # Load the shared pipeline configuration.
+    if ! source "./scripts/config.sh"; then
+        log "FATAL" "Could not load config.sh"
+        exit 1
+    fi
 
-    # Build the candidate Docker image after linting and tests pass.
-    STATE_PATH="./state"
-    CANDIDATE_IMAGE_ID_FILE="$STATE_PATH/candidate_image.id"
-    CANDIDATE_IMAGE_TAG_FILE="$STATE_PATH/candidate_image.tag"
-    LABEL_FILE="$STATE_PATH/label.txt"
+    mkdir -p "$STATE_PATH"
+    log "DEBUG" "Created directory in $STATE_PATH"
 }
 
 run_lint() {

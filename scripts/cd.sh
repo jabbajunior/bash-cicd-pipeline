@@ -19,29 +19,39 @@ initialize_cd_pipeline() {
     fi
 
     log "INFO" "Started Execution"
+    log "DEBUG" "Function is initialize_cd_pipeline"
     log "INFO" "Loaded logging library"
+
+    mkdir -p "$STATE_PATH"
 }
 
 initialize_cd_config() {
-    # Deployment state files track image IDs for rollback decisions.
-    STATE_PATH="./state"
+    log "DEBUG" "Function is initialize_cd_config"
 
-    CANDIDATE_IMAGE_ID_FILE="$STATE_PATH/candidate_image.id"
-    CANDIDATE_IMAGE_TAG_FILE="$STATE_PATH/candidate_image.tag"
-    STABLE_IMAGE_ID_FILE="$STATE_PATH/stable_image.id"
-    STABLE_IMAGE_TAG_FILE="$STATE_PATH/stable_image.tag"
-    PREVIOUS_IMAGE_ID_FILE="$STATE_PATH/previous_image.id"
-    PREVIOUS_IMAGE_TAG_FILE="$STATE_PATH/previous_image.tag"
+    # Load the shared pipeline configuration.
+    if ! source "./scripts/config.sh"; then
+        echo "[FATAL] Could not load config.sh"
+        exit 1
+    fi
 
-    LAST_DEPLOY_STATUS_FILE="$STATE_PATH/last_deploy_status.txt"
-
-    STABLE_CONTAINER_NAME="my-app"
-    CANDIDATE_CONTAINER_NAME="my-app-dev"
-    HOST_PORT="8000"
+    # Fail fast if CI did not produce deployable candidate artifacts.
+    ensure_candidate_artifacts_exist
 
     CANDIDATE_IMAGE_TAG="$(< "$CANDIDATE_IMAGE_TAG_FILE")"
-    CANDIDATE_IMAGE_ID="$(< "$CANDIDATE_IMAGE_ID_FILE")"
+    CANDIDATE_IMAGE_DIGEST="$(< "$CANDIDATE_IMAGE_DIGEST_FILE")"
 
+    log "DEBUG" "candidate tag read as  $CANDIDATE_IMAGE_TAG"
+    log "DEBUG" "candidate digest read as $CANDIDATE_IMAGE_DIGEST"
+
+
+    # Ensures failure not prematurely thrown
+    if [[ -f "$STABLE_IMAGE_DIGEST_FILE" ]]; then
+        STABLE_IMAGE_DIGEST="$(< "$STABLE_IMAGE_DIGEST_FILE")"
+    else
+        STABLE_IMAGE_DIGEST=""
+    fi
+
+    log "DEBUG" "stable digest read as $STABLE_IMAGE_DIGEST"
     log "INFO" "Finished initializing the script"
 }
 
