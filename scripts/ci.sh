@@ -32,6 +32,7 @@ initialize_ci_pipeline() {
 }
 
 run_lint() {
+    log "DEBUG" "Function is run_lint"
     # Run the linter on the application code.
     if ! uv run ruff check "app/"; then
         log "FATAL" "Linting Failed!"
@@ -42,6 +43,8 @@ run_lint() {
 }
 
 run_tests() {
+    log "DEBUG" "Function is run_tests"
+
     # Run the test suite against the application.
     if ! uv run pytest tests/test_combined.py --api-target=inprocess --verbose; then
         log "FATAL" "Unit tests failed"
@@ -52,20 +55,21 @@ run_tests() {
 }
 
 run_build() {
+    log "DEBUG" "Function is run_build"
+
     # Use UTC so build tags are consistent across local runs and CI runners.
     local image_version
     image_version="$(date -u +"%Y-%m-%dT%H-%M-%SZ")"
 
     # Tag each build with a unique timestamp.
-    local image_name="my-image"
-    local tag_name="$image_name:$image_version"
+    local tag_name="$IMAGE_NAME:$image_version"
 
-    # Build the image and write the image ID to the state file.
+    # Build the image and write the digest to the state file.
     if ! docker image build \
         --tag "$tag_name" \
-        --iidfile "$CANDIDATE_IMAGE_ID_FILE" \
+        --iidfile "$CANDIDATE_IMAGE_DIGEST_FILE" \
         --progress=plain \
-        --label="$LABEL" \
+        --label "$PIPELINE_LABEL" \
         .; then
         
         # Removes any dangling images left behind
@@ -77,8 +81,8 @@ run_build() {
     fi
 
     printf '%s\n' "$tag_name" > "$CANDIDATE_IMAGE_TAG_FILE"
-    printf '%s\n' "$LABEL" > "$LABEL_FILE"
-    log "INFO" "Built image $tag_name with image ID $(cat "$CANDIDATE_IMAGE_ID_FILE")"
+    log "DEBUG" "Wrote $tag_name to $CANDIDATE_IMAGE_TAG_FILE" 
+    log "INFO" "Built image $tag_name with image digest $(cat "$CANDIDATE_IMAGE_DIGEST_FILE")"
 }
 
 
@@ -90,3 +94,5 @@ initialize_ci_pipeline
 run_lint
 run_tests
 run_build
+
+log "DEBUG" "Finished executing ci.sh"
