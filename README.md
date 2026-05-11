@@ -43,6 +43,8 @@ If you want to run the GitHub Actions workflows on a self-hosted runner, that ru
 
 ### Usage
 
+`CD` depends on the candidate image artifacts created by `CI`, so always run `CI` first when you are working locally or triggering workflows manually.
+
 #### Local Quick Start
 
 Use the commands below from the project root.
@@ -68,9 +70,31 @@ Run the CD pipeline after CI succeeds. It starts the candidate container, checks
 ./scripts/cd.sh
 ```
 
-The CD script depends on the candidate image artifacts created by `ci.sh`, so it will fail if you run it before CI.
-
 #### Self-Hosted Runner
+
+##### Prerequisites
+These workflows use `runs-on: self-hosted`, so the runner machine needs Docker, Bash, `curl`, and a checkout of this repository.
+
+To add the runner, either:
+
+- Use the GitHub UI: open the repository, go to `Settings` > `Actions` > `Runners`, and click `New self-hosted runner`.
+- Use GitHub CLI: run `gh repo view --web` to open the repository in your browser, then follow the same `Settings` > `Actions` > `Runners` flow.
+
+##### Running with GitHub CLI
+
+You can trigger either workflow from the terminal with `gh` once the repository is connected to GitHub CLI:
+
+```bash
+gh workflow run CI --ref <branch>
+gh workflow run CD --ref <branch>
+```
+
+##### Running via Pull Requests
+
+- `CI` runs automatically when you open a pull request, update it with new commits, reopen it, or mark it ready for review.
+- `CD` runs automatically when a pull request is closed. If you want it to deploy, merge the pull request rather than closing it without merging.
+- If you want to trigger `CI` again, push another commit to the pull request branch.
+- If you want to trigger `CD`, close the pull request after the CI artifacts exist, or merge the pull request if that is your release flow.
 
 ## Known Issues
 
