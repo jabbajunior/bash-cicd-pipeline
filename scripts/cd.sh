@@ -8,6 +8,16 @@
 
 ## Helper Functions
 
+# If candidate artifacts do not exist, do not continue the remainder of the script
+ensure_candidate_artifacts_exist() {
+    log "DEBUG" "Function is ensure_candidate_artifacts_exist"
+
+    if [[ ! -s "$CANDIDATE_IMAGE_TAG_FILE" || ! -s "$CANDIDATE_IMAGE_DIGEST_FILE" ]]; then
+        log "FATAL" "Candidate artifacts do not exist!"
+        exit 1
+    fi
+}
+
 initialize_cd_pipeline() {
     # Make the script path available to the shared logger.
     export SCRIPT_PATH="${BASH_SOURCE[0]}"
