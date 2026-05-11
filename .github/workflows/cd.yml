@@ -8,6 +8,7 @@ on:
   pull_request:
     types: 
     - closed
+  workflow_dispatch:
 
 # Use Bash as the default shell for all run commands in this workflow.
 defaults:
@@ -28,9 +29,9 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      # Check out the repository code onto the runner.
-      - name: Checkout GitHub repo
-        uses: actions/checkout@v4
+      # Sets this variable on each github runner manually since github environment variables cannot resolve bash environment variables
+      - name: Set pipeline state path
+        run: echo "PIPELINE_STATE_PATH=$HOME/test-pipeline/state" >> "$GITHUB_ENV"
 
       # Make the CD script executable, then run it.
       # The script handles deploying new images to docker.

@@ -8,6 +8,7 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 # Use Bash as the default shell for all run commands in this workflow.
 defaults:
@@ -28,9 +29,13 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      # Sets this variable on each github runner manually since github environment variables cannot resolve bash environment variables
+      - name: Set pipeline state path
+        run: echo "PIPELINE_STATE_PATH=$HOME/test-pipeline/state" >> "$GITHUB_ENV"
+
       # Check out the repository code onto the runner.
       - name: Checkout GitHub repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Make the CI script executable, then run it.
       # The script handles linting, testing, and logging.
