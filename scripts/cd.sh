@@ -68,6 +68,8 @@ initialize_cd_config() {
 # Roll back a failed deployment by removing the candidate container and image,
 # then record the failure and clear stable state metadata.
 cleanup_failed_deploy() {
+    log "DEBUG" "cleanup_failed_deploy started!"
+
     # Remove the candidate container first so the failed deployment is no longer running.
      if ! docker container \
         remove "$CANDIDATE_CONTAINER_NAME" \
@@ -78,14 +80,19 @@ cleanup_failed_deploy() {
         log "FATAL" "Could not remove Candidate Container $CANDIDATE_CONTAINER_NAME"
     fi
 
+    log "DEBUG" "succesfully removed container $CANDIDATE_CONTAINER_NAME"
+
     # Remove the candidate image so the failed build is not reused accidentally.
     if ! docker image \
         rm \
         --force \
-        "$CANDIDATE_IMAGE_ID"; then
+        "$CANDIDATE_IMAGE_DIGEST"; then
 
         log "FATAL" "Could not remove Candidate Image $CANDIDATE_IMAGE_TAG"
     fi
+
+    log "DEBUG" "succesfully removed image with tag $CANDIDATE_IMAGE_TAG"
+
 
     # Record the failed deployment for later inspection.
     echo "$(date +"%Y-%m-%d %I:%M:%S %p") [FAILURE] $CANDIDATE_IMAGE_TAG deployment failed!" >> "$LAST_DEPLOY_STATUS_FILE"
@@ -93,12 +100,8 @@ cleanup_failed_deploy() {
     # Emit a final failure log for the pipeline output.
     log "FATAL" "$CANDIDATE_IMAGE_TAG deployment failed!"
 
-    # Remove the stable image metadata so the next run does not treat it as current.
-    rm "$STABLE_IMAGE_ID_FILE" "$STABLE_IMAGE_TAG_FILE"
-
     exit 1
 }
-
 
 # Remove stale docker images generated from the pipeline
 cleanup_stale_images() {
@@ -136,28 +139,44 @@ cleanup_stale_images() {
 
 # Promote a validated candidate to stable and preserve the prior stable version when one exists.
 cleanup_successful_deploy() {
+    log "DEBUG" "Function is cleanup_successful_deploy"
+
     # If stable metadata already exists, this is an update rather than the first deploy.
-    if [[ -f "$STABLE_IMAGE_ID_FILE" && -f "$STABLE_IMAGE_TAG_FILE" ]]; then
+    if [[ -f "$STABLE_IMAGE_DIGEST_FILE" && -f "$STABLE_IMAGE_TAG_FILE" ]]; then
+        log "DEBUG" "Not a first deploy, stable artifacts exist!"
+
         if ! docker container remove "$STABLE_CONTAINER_NAME" --force; then
             log "FATAL" "Could not stop and remove current container!"
             cleanup_failed_deploy
         fi
 
+        # at this point candidate is newly good deployed, stable is old deploy that we tore down
         cleanup_stale_images
 
         # Keep a record of the previous stable image before overwriting it.
-        cp "$STABLE_IMAGE_ID_FILE" "$PREVIOUS_IMAGE_ID_FILE"
+        cp "$STABLE_IMAGE_DIGEST_FILE" "$PREVIOUS_IMAGE_DIGEST_FILE"
         cp "$STABLE_IMAGE_TAG_FILE" "$PREVIOUS_IMAGE_TAG_FILE"
+
+        log "DEBUG" "Demoted stable artifacts to previous artifacts!"
     fi
 
     # Promote the candidate image metadata to stable on every successful deploy.
-    cp "$CANDIDATE_IMAGE_ID_FILE" "$STABLE_IMAGE_ID_FILE"
+    cp "$CANDIDATE_IMAGE_DIGEST_FILE" "$STABLE_IMAGE_DIGEST_FILE"
     cp "$CANDIDATE_IMAGE_TAG_FILE" "$STABLE_IMAGE_TAG_FILE"
 
+    log "DEBUG" "Promoted candidate artifacts to stable artifacts!"
+
     # Promote the running candidate container by renaming it to the stable name.
-    docker container rename "$CANDIDATE_CONTAINER_NAME" "$STABLE_CONTAINER_NAME"
+    if ! docker container rename "$CANDIDATE_CONTAINER_NAME" "$STABLE_CONTAINER_NAME"; then
+        log "FATAL" "Could not rename candidate container to $STABLE_CONTAINER_NAME"
+        cleanup_failed_deploy
+    fi
 
     echo "$(date +"%Y-%m-%d %I:%M:%S %p") [SUCCESS] $CANDIDATE_IMAGE_TAG deployment succeeded!" >> "$LAST_DEPLOY_STATUS_FILE"
+
+    # Remove lingering artifacts
+    rm -f "$CANDIDATE_IMAGE_DIGEST_FILE" "$CANDIDATE_IMAGE_TAG_FILE"
+    log "DEBUG" "Removed candidate artifacts"
 }
 
 # Wait for the candidate server to fbecome healthy before running tests.
@@ -192,23 +211,27 @@ wait_for_healthy_candidate() {
 ## Workflow Functions
 
 
-# Start the candidate container from the image ID produced by CI so it can be validated before promotion.
+# Start the candidate container from the image digest produced by CI so it can be validated before promotion.
 run_candidate_container() {
+    log "DEBUG" "Function is run_candidate_container"
+
     if ! docker run \
         --detach \
         --name "$CANDIDATE_CONTAINER_NAME" \
-        "$CANDIDATE_IMAGE_ID"; then
+        "$CANDIDATE_IMAGE_DIGEST"; then
 
         # Log failures and exit.
-        log "FATAL" "Candidate container $CANDIDATE_CONTAINER_NAME could not be started from image $CANDIDATE_IMAGE_ID!"
+        log "FATAL" "Candidate container $CANDIDATE_CONTAINER_NAME could not be started from image $CANDIDATE_IMAGE_DIGEST!"
         cleanup_failed_deploy
     fi
 
-    log "INFO" "Candidate container $CANDIDATE_CONTAINER_NAME started from image $CANDIDATE_IMAGE_ID"
+    log "INFO" "Candidate container $CANDIDATE_CONTAINER_NAME started from image $CANDIDATE_IMAGE_DIGEST"
 }
 
 # Run deployment tests against the candidate container after it becomes healthy.
 run_deployment_tests() {
+    log "DEBUG" "Function is run_deployment_tests"
+
     if ! wait_for_healthy_candidate; then
         log "FATAL" "Candidate Server is not healthy!"
         cleanup_failed_deploy
@@ -225,8 +248,6 @@ run_deployment_tests() {
 
         # Log failures and cleanup
         log "FATAL" "Candidate container $CANDIDATE_CONTAINER_NAME did not pass the testing suite!"
-        log "DEBUG" "Rollback initiated!"
-
         cleanup_failed_deploy
     fi
 
@@ -242,9 +263,6 @@ run_deployment_tests() {
 
 initialize_cd_pipeline
 initialize_cd_config
-
-# TODO testing purposes only
-#docker container prune -f
 
 run_candidate_container
 run_deployment_tests
