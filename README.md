@@ -43,6 +43,35 @@ If you want to run the GitHub Actions workflows on a self-hosted runner, that ru
 
 ### Usage
 
+#### Local Quick Start
+
+Use the commands below from the project root.
+
+##### Prerequisites
+
+If the scripts are not already executable, set that once:
+```bash
+chmod +x scripts/*.sh
+```
+
+##### Run CI
+
+Run the CI pipeline first. It lints the code, runs the tests, and builds the candidate Docker image.
+```bash
+./scripts/ci.sh
+```
+
+##### Run CD
+
+Run the CD pipeline after CI succeeds. It starts the candidate container, checks that the app is healthy, and promotes the deployment if everything passes.
+```bash
+./scripts/cd.sh
+```
+
+The CD script depends on the candidate image artifacts created by `ci.sh`, so it will fail if you run it before CI.
+
+#### Self-Hosted Runner
+
 ## Known Issues
 
 ## Further Reading
