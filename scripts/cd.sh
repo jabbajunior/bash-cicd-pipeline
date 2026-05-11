@@ -100,16 +100,38 @@ cleanup_failed_deploy() {
 }
 
 
-cleanup_old_images() {
-    # Cleans up older images generated from this file (via label) except for all files in the state directory
+# Remove stale docker images generated from the pipeline
+cleanup_stale_images() {
+    log "DEBUG" "Function is cleanup_stale_images"
+    local -a all_digests=()
 
+    # Collect every image digest carrying the pipeline label.
+    mapfile -t all_digests < <(
+        docker image ls \
+            --filter "label=$PIPELINE_LABEL" \
+            --all \
+            --digests \
+            --format "{{.Digest}}"
+    )
 
-    # Cleans up all older images, except for the current stable image and a previous stable image
+    log "DEBUG" "Scanning pipeline image digests for cleanup"
 
-    # Scan the state directory for files and delete all 
-    # Label all of our images
+    # Keep the candidate and stable images, delete everything else.
+    for i in "${!all_digests[@]}"; do
+        local cur_digest="${all_digests[$i]}"
 
-    
+        # Whitelist digests in candidate_image.digest and stable_image.digest
+        if [[ "$cur_digest" == "$CANDIDATE_IMAGE_DIGEST" || "$cur_digest" == "$STABLE_IMAGE_DIGEST" ]]; then
+            log "DEBUG" "Whitelisted image cur_digest[$i]: $cur_digest"
+            continue
+        fi
+
+        # Delete all other digests
+        log "INFO" "Deleting old pipeline image cur_digest[$i]: $cur_digest"
+        if ! docker image rm --force "$cur_digest"; then
+            log "ERROR" "Could not remove pipeline image $cur_digest"
+        fi
+    done
 }
 
 # Promote a validated candidate to stable and preserve the prior stable version when one exists.
@@ -120,6 +142,8 @@ cleanup_successful_deploy() {
             log "FATAL" "Could not stop and remove current container!"
             cleanup_failed_deploy
         fi
+
+        cleanup_stale_images
 
         # Keep a record of the previous stable image before overwriting it.
         cp "$STABLE_IMAGE_ID_FILE" "$PREVIOUS_IMAGE_ID_FILE"
@@ -134,7 +158,6 @@ cleanup_successful_deploy() {
     docker container rename "$CANDIDATE_CONTAINER_NAME" "$STABLE_CONTAINER_NAME"
 
     echo "$(date +"%Y-%m-%d %I:%M:%S %p") [SUCCESS] $CANDIDATE_IMAGE_TAG deployment succeeded!" >> "$LAST_DEPLOY_STATUS_FILE"
-    cleanup_old_images
 }
 
 # Wait for the candidate server to fbecome healthy before running tests.
