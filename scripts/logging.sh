@@ -1,13 +1,7 @@
 #!/usr/bin/bash
+# Logging library script that has consistent logging
 
-# Ensure PROJECT_ROOT was set by the calling script before sourcing this file.
-if [[ -z "${PROJECT_ROOT:-}" ]]; then
-    echo "ERROR: PROJECT_ROOT is not set before sourcing logging.sh" >&2
-    exit 1
-fi
-
-
-LOG_DIR="$PROJECT_ROOT/logs"
+LOG_DIR="./logs"
 LOG_FILE="$LOG_DIR/pipeline.log"
 
 mkdir -p "$LOG_DIR" || {
@@ -29,5 +23,5 @@ log() {
     
     local script_name=$(basename $SCRIPT_PATH)  # The name of the script that is running
     local timestamp=$(date +"%Y-%m-%d %I:%M:%S %p")  # The current date and time at the time the function is called
-    echo "$timestamp [$log_level] [$script_name] $message" | tee -a $LOG_FILE
+    echo "$timestamp [$log_level] [$script_name] $message" | tee -a "$LOG_FILE"
 }
