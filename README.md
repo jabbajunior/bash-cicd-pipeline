@@ -32,6 +32,8 @@ To run this project locally, make sure you have the following installed:
 - Bash
 - `curl`
 
+This project is intended for Linux or a Linux-like environment with Bash 4+, Docker, and `curl`. Other Unix-like systems may work, but they are not the primary target.
+
 Then set up the project:
 
 1. Clone the repository to your machine.
@@ -97,6 +99,12 @@ gh workflow run CD --ref <branch>
 - If you want to trigger `CD`, close the pull request after the CI artifacts exist, or merge the pull request if that is your release flow.
 
 ## Known Issues
+- Run the scripts from the repository root. They source `./scripts/...` and use relative `./logs` and `./state` paths, so absolute-path invocation is not supported.
+- The project is Linux-first. It uses `#!/usr/bin/bash` and Bash-specific features such as `mapfile`, so other Unix-like systems are not the primary target.
+- The CD flow assumes the app responds on `localhost:8000` and exposes a `/health` endpoint during validation.
+- `CD` depends on the candidate artifacts created by `CI` in the same state directory. Mixing runs across different `PIPELINE_STATE_PATH` values is not supported.
+- The `CD` workflow assumes the self-hosted runner already has a checkout of this repository.
+- The `CD` workflow currently triggers on any closed pull request. If you only want deploys on merged pull requests, that behavior needs an additional guard.
 
 ## Further Reading
 
