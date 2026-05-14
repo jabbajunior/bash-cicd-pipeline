@@ -16,9 +16,19 @@ It also keeps logs and pipeline state so you can follow what happened across run
 - Promotes the candidate to the stable deployment if checks pass
 - Records logs and state files for later review
 
-## Visual Diagram Here
+## Visuals
 
-(Demo also here)
+### Pipeline Diagram
+
+![CI/CD pipeline flow](docs/pipeline-flow.png)
+
+This diagram shows the high-level flow between `scripts/ci.sh` and `scripts/cd.sh`.
+
+### Demo Video
+
+_Video placeholder coming soon._
+
+This section will eventually show a short walkthrough of running the pipeline locally and through the self-hosted runner.
 
 ## Getting Started
 
