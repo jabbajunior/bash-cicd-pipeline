@@ -22,27 +22,30 @@ initialize_cd_pipeline() {
     # Make the script path available to the shared logger.
     export SCRIPT_PATH="${BASH_SOURCE[0]}"
 
+    # Load configuration first so the logger can use configured paths.
+    if ! source "./scripts/config.sh"; then
+        echo "[FATAL] Could not load config.sh"
+        exit 1
+    fi
+
     # Load the shared logging helpers after SCRIPT_PATH is set.
-    if ! source "./scripts/logging.sh"; then
-        echo "[FATAL] Could not load logging.sh"
+    if ! source "$LOGGING_SCRIPT_PATH"; then
+        echo "[FATAL] Could not load $LOGGING_SCRIPT_PATH"
         exit 1
     fi
 
     log "INFO" "Started Execution"
     log "DEBUG" "Function is initialize_cd_pipeline"
+    log "INFO" "Loaded pipeline configuration"
     log "INFO" "Loaded logging library"
+    log "DEBUG" "Writing pipeline logs to $LOG_FILE"
 
     mkdir -p "$STATE_PATH"
+    log "DEBUG" "Created pipeline state directory: $STATE_PATH"
 }
 
 initialize_cd_config() {
     log "DEBUG" "Function is initialize_cd_config"
-
-    # Load the shared pipeline configuration.
-    if ! source "./scripts/config.sh"; then
-        echo "[FATAL] Could not load config.sh"
-        exit 1
-    fi
 
     # Fail fast if CI did not produce deployable candidate artifacts.
     ensure_candidate_artifacts_exist

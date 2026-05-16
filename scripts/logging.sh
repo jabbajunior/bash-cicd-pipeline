@@ -1,11 +1,13 @@
 #!/usr/bin/bash
 # Logging library script that has consistent logging
 
-LOG_DIR="./logs"
-LOG_FILE="$LOG_DIR/pipeline.log"
+if [[ -z "${LOG_PATH:-}" || -z "${LOG_FILE:-}" ]]; then
+    echo "ERROR: logging config not loaded. Source config.sh before logging.sh" >&2
+    exit 1
+fi
 
-mkdir -p "$LOG_DIR" || {
-    echo "ERROR: could not create log directory: $LOG_DIR" >&2
+mkdir -p "$LOG_PATH" || {
+    echo "ERROR: could not create log directory: $LOG_PATH" >&2
     exit 1
 }
 

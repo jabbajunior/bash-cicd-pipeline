@@ -114,6 +114,7 @@ gh workflow run CD --ref <branch>
 - The CD flow assumes the app responds on `localhost:8000` and exposes a `/health` endpoint during validation.
 - `CD` depends on the candidate artifacts created by `CI` in the same state directory. Mixing runs across different `PIPELINE_STATE_PATH` values is not supported.
 - The `CD` workflow assumes the self-hosted runner already has a checkout of this repository.
+# TODO Rework above bullet to make explicitly clear that I have made the assumptio nthat CI workflow and CD workflow are on the same github runner for state artifacts.
 - The `CD` workflow currently triggers on any closed pull request. If you only want deploys on merged pull requests, that behavior needs an additional guard.
 
 ## Further Reading

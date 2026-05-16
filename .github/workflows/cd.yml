@@ -33,6 +33,9 @@ jobs:
       - name: Set pipeline state path
         run: echo "PIPELINE_STATE_PATH=$HOME/test-pipeline/state" >> "$GITHUB_ENV"
 
+      - name: Set pipeline log path
+        run: echo "PIPELINE_LOG_PATH=$HOME/test-pipeline/logs" >> "$GITHUB_ENV"
+
       # Make the CD script executable, then run it.
       # The script handles deploying new images to docker.
       - name: Execute cd.sh

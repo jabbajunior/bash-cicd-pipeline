@@ -2,8 +2,15 @@
 
 # Shared configuration for the CI and CD pipeline scripts.
 
-# Keep pipeline state outside the repo checkout when PIPELINE_STATE_PATH is set
+readonly LOGGING_SCRIPT_PATH="./scripts/logging.sh"
+
+# Keep pipeline state outside the repo checkout when PIPELINE_STATE_PATH is set.
 readonly STATE_PATH="${PIPELINE_STATE_PATH:-./state}"
+
+# Keep pipeline logs outside the repo checkout when PIPELINE_LOG_PATH is set.
+readonly LOG_PATH="${PIPELINE_LOG_PATH:-./logs}"
+readonly LOG_FILE="$LOG_PATH/pipeline.log"
+
 readonly PIPELINE_LABEL="com.example.pipeline=test-pipeline"
 
 readonly IMAGE_NAME="my-image"
